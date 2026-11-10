@@ -209,6 +209,7 @@ async function sok(q) {
   const status = $('#sok-status');
   const ut = $('#sok-resultat');
   q = q.trim();
+  $('#sok-filter').hidden = !q;
   if (!q) { setStatus(status, ''); visPopulaert(); return; }
   if (!S.token) { setStatus(status, ''); ut.innerHTML = trengerNokkel(); return; }
   setStatus(status, 'Søker …');
@@ -253,28 +254,110 @@ function trengerNokkel() {
   return `<div class="tomt">For å søke trenger appen en gratis TMDB-nøkkel.<br><a class="btn primary" href="#tjenester">Sett opp</a></div>`;
 }
 
-async function visPopulaert() {
+/* ---------- FORSLAG (vises når søkefeltet er tomt) ---------- */
+const SJANGRE = [
+  ['alle', 'Alle', '', ''],
+  ['komedie', 'Komedie', '35', '35'],
+  ['krim', 'Krim', '80', '80'],
+  ['drama', 'Drama', '18', '18'],
+  ['action', 'Action', '28', '10759'],
+  ['scifi', 'Sci-fi og fantasy', '878|14', '10765'],
+  ['dok', 'Dokumentar', '99', '99'],
+  ['familie', 'Familie', '10751', '10751'],
+  ['animasjon', 'Animasjon', '16', '16'],
+];
+let sjanger = hent('sjanger', 'alle');
+const hyller = new Map(); // id -> {hent(side), side, ferdig, sett:Set}
+
+function idag() { return new Date().toISOString().slice(0, 10); }
+
+function discoverHylle(type, ekstra) {
+  return async (side) => {
+    const sj = SJANGRE.find((s) => s[0] === sjanger) || SJANGRE[0];
+    const params = Object.assign({
+      watch_region: S.land, with_watch_providers: S.mine.map((m) => m.id).join('|'),
+      with_watch_monetization_types: 'flatrate|free|ads', sort_by: 'popularity.desc',
+      language: SPRAAK, page: side, with_genres: type === 'movie' ? sj[2] : sj[3],
+    }, ekstra);
+    const svar = await api('/discover/' + type, params);
+    return { titler: (svar.results || []).map((r) => Object.assign({ media_type: type }, r)), flere: side < (svar.total_pages || 1) };
+  };
+}
+
+/* Anbefalinger basert på en tittel i se senere-lista, filtrert til dine tjenester. */
+function anbefalHylle(t) {
+  return async (side) => {
+    const svar = await api(`/${t.type}/${t.id}/recommendations`, { language: SPRAAK, page: side });
+    const kandidater = (svar.results || []).map((r) => Object.assign({ media_type: r.media_type || t.type }, r));
+    const sums = await Promise.all(kandidater.map((r) => tilbydere(r.media_type, r.id).then(oppsummer).catch(() => null)));
+    return { titler: kandidater.filter((r, i) => sums[i] && sums[i].mine.length), flere: side < Math.min(svar.total_pages || 1, 3) };
+  };
+}
+
+function hylleDefinisjoner() {
+  const d = [];
+  const nyeste = S.liste.slice(0, 2);
+  if (sjanger === 'alle') nyeste.forEach((t, i) => d.push({ id: 'anb' + i, tittel: `Fordi du vil se «${t.tittel}»`, hent: anbefalHylle(t) }));
+  d.push({ id: 'ny-film', tittel: 'Nyeste filmer hos deg', hent: discoverHylle('movie', { sort_by: 'primary_release_date.desc', 'primary_release_date.lte': idag(), 'vote_count.gte': 10 }) });
+  d.push({ id: 'ny-tv', tittel: 'Nyeste serier hos deg', hent: discoverHylle('tv', { sort_by: 'first_air_date.desc', 'first_air_date.lte': idag(), 'vote_count.gte': 3 }) });
+  d.push({ id: 'pop-tv', tittel: 'Populære serier hos deg', hent: discoverHylle('tv', {}) });
+  d.push({ id: 'pop-film', tittel: 'Populære filmer hos deg', hent: discoverHylle('movie', {}) });
+  d.push({ id: 'topp-tv', tittel: 'Best likte serier hos deg', hent: discoverHylle('tv', { sort_by: 'vote_average.desc', 'vote_count.gte': 300 }) });
+  d.push({ id: 'topp-film', tittel: 'Best likte filmer hos deg', hent: discoverHylle('movie', { sort_by: 'vote_average.desc', 'vote_count.gte': 1000 }) });
+  return d;
+}
+
+function sjangerHtml() {
+  return `<div class="chips scroll sjangre" role="group" aria-label="Sjanger">${SJANGRE.map(([k, navn]) =>
+    `<button type="button" class="chip" data-sjanger="${k}" aria-pressed="${k === sjanger}">${esc(navn)}</button>`).join('')}</div>`;
+}
+
+function visPopulaert() {
   const ut = $('#sok-resultat');
-  const nr = sokNr;
   if (!S.token) { ut.innerHTML = trengerNokkel(); return; }
   if (!S.mine.length) {
-    ut.innerHTML = `<div class="tomt">Søk etter en film eller serie.<br>Tips: Velg tjenestene dine under Tjenester først.<br><a class="btn ghost" href="#tjenester">Velg tjenester</a></div>`;
+    ut.innerHTML = `<div class="tomt">Søk etter en film eller serie.<br>Velg tjenestene dine under Tjenester, så får du forslag her.<br><a class="btn ghost" href="#tjenester">Velg tjenester</a></div>`;
     return;
   }
-  ut.innerHTML = '<p class="status">Henter populært på dine tjenester …</p>';
+  hyller.clear();
+  const defs = hylleDefinisjoner();
+  ut.innerHTML = sjangerHtml() + defs.map((h) =>
+    `<div class="gruppe" data-hylle-boks="${h.id}"><p class="caps">${esc(h.tittel)}</p><div class="hylle" data-hylle="${h.id}"><p class="status">Henter …</p></div></div>`).join('');
+  defs.forEach((h) => {
+    hyller.set(h.id, { hent: h.hent, side: 0, flere: true, sett: new Set(), laster: false });
+    lastHylle(h.id);
+  });
+}
+
+async function lastHylle(id) {
+  const h = hyller.get(id);
+  if (!h || h.laster || !h.flere) return;
+  h.laster = true;
+  const el = document.querySelector(`[data-hylle="${id}"]`);
+  const merKnapp = el && el.querySelector('[data-mer]');
+  if (merKnapp) { merKnapp.disabled = true; merKnapp.textContent = 'Henter …'; }
   try {
-    const params = {
-      watch_region: S.land, with_watch_providers: S.mine.map((m) => m.id).join('|'),
-      with_watch_monetization_types: 'flatrate|free|ads', sort_by: 'popularity.desc', language: SPRAAK,
-    };
-    const [tv, film] = await Promise.all([api('/discover/tv', params), api('/discover/movie', params)]);
-    if (nr !== sokNr) return;
-    const hylle = (liste, type) => liste.slice(0, 15).map((r) => plakatHtml(husk(tittelInfo(Object.assign({ media_type: type }, r))))).join('');
-    ut.innerHTML = `<div class="gruppe"><p class="caps">Populære serier hos deg</p><div class="hylle">${hylle(tv.results || [], 'tv')}</div></div>
-      <div class="gruppe"><p class="caps">Populære filmer hos deg</p><div class="hylle">${hylle(film.results || [], 'movie')}</div></div>`;
+    const { titler, flere } = await h.hent(h.side + 1);
+    if (hyller.get(id) !== h) return; // forslagene er tegnet på nytt
+    h.side += 1;
+    h.flere = flere;
+    const nye = titler.filter((r) => !h.sett.has(r.media_type + ':' + r.id));
+    nye.forEach((r) => h.sett.add(r.media_type + ':' + r.id));
+    if (!el) return;
+    if (merKnapp) merKnapp.remove();
+    if (h.side === 1) el.innerHTML = '';
+    el.insertAdjacentHTML('beforeend', nye.map((r) => plakatHtml(husk(tittelInfo(r)))).join(''));
+    if (h.flere) el.insertAdjacentHTML('beforeend', `<button type="button" class="plakat mer" data-mer="${id}">Vis flere</button>`);
+    if (!el.children.length) {
+      if (h.flere && h.side < 3) { h.laster = false; return lastHylle(id); }
+      const boks = document.querySelector(`[data-hylle-boks="${id}"]`);
+      if (boks) boks.remove();
+    }
   } catch (e) {
-    if (nr !== sokNr) return;
-    ut.innerHTML = `<p class="status feil">${esc(feiltekst(e))}</p>`;
+    if (el && h.side === 0) el.innerHTML = `<p class="status feil">${esc(feiltekst(e))}</p>`;
+    else if (merKnapp) { merKnapp.disabled = false; merKnapp.textContent = 'Prøv igjen'; }
+  } finally {
+    h.laster = false;
   }
 }
 
@@ -554,6 +637,10 @@ function init() {
     if (l) { toggleListe(l.dataset.liste); return; }
     const f = e.target.closest('[data-lfilter]');
     if (f) { S.listeFilter = f.dataset.lfilter; visListe(); return; }
+    const m = e.target.closest('[data-mer]');
+    if (m) { lastHylle(m.dataset.mer); return; }
+    const sj = e.target.closest('[data-sjanger]');
+    if (sj) { sjanger = sj.dataset.sjanger; lagre('sjanger', sjanger); visPopulaert(); return; }
     if (e.target.closest('[data-vis-alle]')) settFilter(false);
   });
   const dlg = $('#detalj');
