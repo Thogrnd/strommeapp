@@ -634,7 +634,16 @@ function visFane() {
 }
 
 /* ---------- Oppstart ---------- */
+function settTema(tema) {
+  document.documentElement.dataset.tema = tema;
+  lagre('tema', tema);
+  document.querySelectorAll('button[data-tema]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.tema === tema)));
+  const farge = tema === 'neon' ? '#0d1030' : '#101418';
+  document.querySelector('meta[name=theme-color]').setAttribute('content', farge);
+}
+
 function init() {
+  settTema(hent('tema', 'standard'));
   $('#token').value = S.token;
   fyllLand();
   settFilterVisning();
@@ -671,6 +680,8 @@ function init() {
     if (l) { toggleListe(l.dataset.liste); return; }
     const f = e.target.closest('[data-lfilter]');
     if (f) { S.listeFilter = f.dataset.lfilter; visListe(); return; }
+    const tm = e.target.closest('button[data-tema]');
+    if (tm) { settTema(tm.dataset.tema); return; }
     const tr = e.target.closest('[data-trailer]');
     if (tr) { spillTrailer(tr); return; }
     const m = e.target.closest('[data-mer]');

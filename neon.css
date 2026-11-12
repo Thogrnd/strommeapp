@@ -1,0 +1,107 @@
+/* Neon-tema: mørk blå/lilla bakgrunn, glasskort med lysende kanter.
+   Aktiveres med <html data-tema="neon">. */
+html[data-tema=neon] {
+  --bg: #0d1030;
+  --bar: rgba(16, 20, 56, .85);
+  --surface: rgba(28, 32, 78, .72);
+  --field: rgba(22, 26, 66, .9);
+  --chip: rgba(70, 60, 150, .45);
+  --line: rgba(130, 120, 255, .18);
+  --border: rgba(140, 130, 255, .38);
+  --text: #f3f2ff;
+  --soft: #dcdaf5;
+  --muted: #b3b0dc;
+  --accent: #4f7bff;
+  --accent-ink: #ffffff;
+  --link: #9db4ff;
+  --neon-rosa: #ff3d8b;
+  --neon-lilla: #9b5cff;
+  --neon-blaa: #3d7bff;
+}
+
+html[data-tema=neon],
+html[data-tema=neon] body {
+  background:
+    radial-gradient(900px 520px at 85% -5%, rgba(255, 61, 139, .28), transparent 60%),
+    radial-gradient(800px 600px at -10% 30%, rgba(61, 123, 255, .32), transparent 60%),
+    radial-gradient(700px 500px at 60% 110%, rgba(155, 92, 255, .30), transparent 60%),
+    #0d1030;
+  background-attachment: fixed;
+}
+
+html[data-tema=neon] h1 {
+  background: linear-gradient(90deg, #fff 30%, #c9b8ff);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+
+/* Glasskort med neonkant */
+html[data-tema=neon] .card,
+html[data-tema=neon] .treff,
+html[data-tema=neon] .list {
+  background: var(--surface);
+  border: 1px solid transparent;
+  background-clip: padding-box;
+  box-shadow: 0 0 0 1px rgba(155, 92, 255, .45), 0 0 18px rgba(155, 92, 255, .18), inset 0 1px 0 rgba(255, 255, 255, .06);
+  -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+}
+html[data-tema=neon] .gruppe:nth-of-type(3n+1) .treff { box-shadow: 0 0 0 1px rgba(255, 61, 139, .5), 0 0 18px rgba(255, 61, 139, .16), inset 0 1px 0 rgba(255, 255, 255, .06); }
+html[data-tema=neon] .gruppe:nth-of-type(3n+2) .treff { box-shadow: 0 0 0 1px rgba(61, 123, 255, .55), 0 0 18px rgba(61, 123, 255, .18), inset 0 1px 0 rgba(255, 255, 255, .06); }
+
+html[data-tema=neon] .search {
+  background: var(--field);
+  box-shadow: 0 0 0 1px var(--border), 0 0 22px rgba(61, 123, 255, .2);
+}
+
+/* Knapper og brikker */
+html[data-tema=neon] .btn.primary,
+html[data-tema=neon] .chip[aria-pressed=true] {
+  background: linear-gradient(90deg, var(--neon-blaa), var(--neon-lilla));
+  border-color: transparent; color: #fff;
+  box-shadow: 0 0 16px rgba(108, 92, 255, .55);
+}
+html[data-tema=neon] .btn.on { color: #fff; border-color: var(--neon-rosa); box-shadow: 0 0 12px rgba(255, 61, 139, .45); }
+html[data-tema=neon] .tag { background: rgba(79, 123, 255, .22); box-shadow: inset 0 0 0 1px rgba(79, 123, 255, .5); }
+html[data-tema=neon] .tag.annen { background: transparent; box-shadow: none; }
+html[data-tema=neon] .caps { color: #c3bff0; }
+html[data-tema=neon] .caps::before {
+  content: ""; display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 8px; vertical-align: 1px;
+  background: var(--neon-rosa); box-shadow: 0 0 8px var(--neon-rosa);
+}
+
+html[data-tema=neon] .plakat { box-shadow: 0 6px 18px rgba(0, 0, 0, .45); }
+html[data-tema=neon] .hylle .plakat:hover { box-shadow: 0 0 0 2px var(--neon-lilla), 0 0 18px rgba(155, 92, 255, .6); }
+
+/* Meny: neonmarkering av aktiv fane */
+html[data-tema=neon] .tabbar {
+  background: var(--bar); border-top: 1px solid var(--line);
+  -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px);
+}
+html[data-tema=neon] .tabbar a[aria-current=page] { color: #fff; }
+html[data-tema=neon] .tabbar a[aria-current=page] .ico { filter: drop-shadow(0 0 6px var(--neon-blaa)); color: #8fb0ff; }
+
+html[data-tema=neon] dialog { background: #151a48; box-shadow: 0 -1px 0 rgba(155, 92, 255, .6), 0 -10px 40px rgba(155, 92, 255, .25); }
+
+/* PC / brett: menyen blir en sidemeny til venstre, som i et dashbord */
+@media (min-width: 900px) {
+  html[data-tema=neon] #app { max-width: 1100px; padding-left: 260px; padding-bottom: 60px; }
+  html[data-tema=neon] .tabbar {
+    top: 16px; bottom: 16px; left: 16px; right: auto; width: 220px; border-radius: 20px;
+    display: flex; flex-direction: column; gap: 6px; padding: 24px 12px;
+    border: 1px solid var(--line); box-shadow: 0 0 24px rgba(61, 123, 255, .15);
+  }
+  html[data-tema=neon] .tabbar::before {
+    content: "Strømmeapp"; font-weight: 700; font-size: 20px; color: #fff; padding: 0 12px 18px;
+  }
+  html[data-tema=neon] .tabbar a {
+    flex-direction: row; gap: 12px; font-size: 15px; padding: 12px; border-radius: 12px; color: var(--muted);
+  }
+  html[data-tema=neon] .tabbar a[aria-current=page] {
+    background: linear-gradient(90deg, var(--neon-blaa), rgba(155, 92, 255, .6));
+    box-shadow: 0 0 18px rgba(61, 123, 255, .45);
+  }
+  html[data-tema=neon] #sok-resultat .gruppe:has(.treff) { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+  html[data-tema=neon] #sok-resultat .gruppe:has(.treff) > .caps,
+  html[data-tema=neon] #sok-resultat .gruppe:has(.treff) > .tomt { grid-column: 1 / -1; }
+  html[data-tema=neon] #liste-innhold .gruppe { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+  html[data-tema=neon] #liste-innhold .gruppe > .caps { grid-column: 1 / -1; }
+}

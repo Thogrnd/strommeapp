@@ -10,6 +10,8 @@
   <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="icons/icon-192.png">
   <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="neon.css">
+  <script>try{document.documentElement.dataset.tema=JSON.parse(localStorage.getItem("sa.tema"))||"standard"}catch(e){}</script>
 </head>
 <body>
   <main id="app">
@@ -54,6 +56,14 @@
         </div>
         <button type="button" id="token-lagre" class="btn primary full">Lagre og test</button>
         <p id="token-status" class="status" aria-live="polite"></p>
+      </div>
+
+      <div class="card">
+        <h2 id="h-tema">Utseende</h2>
+        <div class="chips" role="group" aria-labelledby="h-tema">
+          <button type="button" class="chip" data-tema="standard" aria-pressed="false">Standard</button>
+          <button type="button" class="chip" data-tema="neon" aria-pressed="false">Neon</button>
+        </div>
       </div>
 
       <label for="land" class="lbl caps">Land</label>
