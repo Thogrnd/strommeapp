@@ -481,7 +481,6 @@ async function visDetalj(key) {
     if (info.overview && !t.oversikt) t.oversikt = info.overview;
     const sum = oppsummer(data);
     let html = topp;
-    if (trailer) html += trailerHtml(trailer);
     if (t.oversikt) html += `<p class="oversikt">${esc(t.oversikt)}</p>`;
     html += `<div class="handling">${aapneKnapp(t, sum)}${listeKnapp(t)}</div>`;
     let noe = false;
@@ -496,7 +495,10 @@ async function visDetalj(key) {
       }).join('')}</div></div>`;
     }
     if (!noe) html += `<p class="meta">Ikke tilgjengelig i ${esc(landNavn(S.land))} akkurat nå.</p>`;
-    if (data.link) html += `<a class="btn ghost full" href="${esc(data.link)}" target="_blank" rel="noopener">Alle direktelenker (JustWatch)</a>`;
+    const trailerUrl = trailer
+      ? 'https://www.youtube.com/watch?v=' + encodeURIComponent(trailer)
+      : 'https://www.youtube.com/results?search_query=' + encodeURIComponent(`${t.tittel} ${t.aar || ''} trailer`.replace(/\s+/g, ' ').trim());
+    html += `<a class="btn ghost full" href="${esc(trailerUrl)}" target="_blank" rel="noopener"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>${trailer ? 'Se trailer' : 'Søk etter trailer på YouTube'}</a>`;
     ut.innerHTML = html;
   } catch (e) {
     ut.innerHTML = topp + `<p class="status feil">${esc(feiltekst(e))}</p>`;
