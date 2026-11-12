@@ -1,6 +1,6 @@
 /* Enkel service worker: gjør appen installerbar og lar den åpne uten nett.
    Henter alltid nyeste versjon når nett finnes (network first). */
-const CACHE = 'strommeapp-v2';
+const CACHE = 'strommeapp-v3';
 const FILER = ['./', 'index.html', 'style.css', 'app.js', 'manifest.webmanifest', 'icons/icon.svg', 'icons/icon-192.png', 'icons/icon-512.png'];
 
 self.addEventListener('install', (e) => {

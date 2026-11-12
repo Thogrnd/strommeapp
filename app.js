@@ -432,6 +432,35 @@ async function visListe() {
   ut.innerHTML = html;
 }
 
+/* ---------- TRAILER ---------- */
+async function finnTrailer(t) {
+  if (t.trailer !== undefined) return t.trailer;
+  try {
+    const svar = await api(`/${t.type}/${t.id}/videos`, { language: SPRAAK, include_video_language: 'nb,no,en,null' });
+    const yt = (svar.results || []).filter((v) => v.site === 'YouTube' && v.key);
+    const poeng = (v) => (v.type === 'Trailer' ? 100 : v.type === 'Teaser' ? 50 : 0)
+      + (v.official ? 20 : 0) + (['nb', 'no'].includes(v.iso_639_1) ? 10 : 0);
+    const best = yt.filter((v) => poeng(v) >= 50).sort((a, b) => poeng(b) - poeng(a))[0];
+    t.trailer = best ? best.key : null;
+  } catch (e) { t.trailer = null; }
+  return t.trailer;
+}
+
+function trailerHtml(key) {
+  return `<button type="button" class="trailer" data-trailer="${esc(key)}" aria-label="Spill av trailer">
+    <img src="https://i.ytimg.com/vi/${encodeURIComponent(key)}/hqdefault.jpg" alt="">
+    <span class="spill"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg></span>
+  </button>`;
+}
+
+function spillTrailer(knapp) {
+  const key = knapp.dataset.trailer;
+  const ramme = document.createElement('div');
+  ramme.className = 'trailer';
+  ramme.innerHTML = `<iframe src="https://www.youtube-nocookie.com/embed/${encodeURIComponent(key)}?autoplay=1&playsinline=1&rel=0" title="Trailer" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe>`;
+  knapp.replaceWith(ramme);
+}
+
 /* ---------- DETALJER ---------- */
 async function visDetalj(key) {
   const t = kjente.get(key) || S.liste.find((x) => x.key === key);
@@ -443,13 +472,16 @@ async function visDetalj(key) {
   ut.innerHTML = topp + '<p class="status">Henter …</p>';
   if (!dlg.open) dlg.showModal();
   try {
-    const [info, data] = await Promise.all([
+    const [info, data, trailer] = await Promise.all([
       t.oversikt ? Promise.resolve({ overview: t.oversikt }) : api(`/${t.type}/${t.id}`, { language: SPRAAK }).catch(() => ({})),
       tilbydere(t.type, t.id),
+      finnTrailer(t),
     ]);
+    if (!dlg.open || $('#d-tittel')?.textContent !== t.tittel) return;
     if (info.overview && !t.oversikt) t.oversikt = info.overview;
     const sum = oppsummer(data);
     let html = topp;
+    if (trailer) html += trailerHtml(trailer);
     if (t.oversikt) html += `<p class="oversikt">${esc(t.oversikt)}</p>`;
     html += `<div class="handling">${aapneKnapp(t, sum)}${listeKnapp(t)}</div>`;
     let noe = false;
@@ -637,6 +669,8 @@ function init() {
     if (l) { toggleListe(l.dataset.liste); return; }
     const f = e.target.closest('[data-lfilter]');
     if (f) { S.listeFilter = f.dataset.lfilter; visListe(); return; }
+    const tr = e.target.closest('[data-trailer]');
+    if (tr) { spillTrailer(tr); return; }
     const m = e.target.closest('[data-mer]');
     if (m) { lastHylle(m.dataset.mer); return; }
     const sj = e.target.closest('[data-sjanger]');
@@ -646,7 +680,7 @@ function init() {
   const dlg = $('#detalj');
   $('#d-lukk').addEventListener('click', () => dlg.close());
   dlg.addEventListener('click', (e) => { if (e.target === dlg) dlg.close(); });
-  dlg.addEventListener('close', () => { if (aktivFane === 'liste') visListe(); });
+  dlg.addEventListener('close', () => { $('#d-innhold').innerHTML = ''; if (aktivFane === 'liste') visListe(); });
 
   window.addEventListener('hashchange', visFane);
   if (!S.token && !location.hash) location.hash = '#tjenester';
